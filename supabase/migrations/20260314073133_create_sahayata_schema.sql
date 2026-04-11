@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS user_profiles (
   phone text,
   skills text[] DEFAULT ARRAY[]::text[],
   location text,
-  availability boolean DEFAULT true,
+  availability text DEFAULT open ,
   experience integer DEFAULT 0,
   average_rating numeric(3,2) DEFAULT 0.00,
   total_ratings integer DEFAULT 0,
@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS jobs (
   location text NOT NULL,
   required_skills text[] DEFAULT ARRAY[]::text[],
   employer_id uuid REFERENCES user_profiles(user_id) ON DELETE CASCADE NOT NULL,
+  assigned_worker_id uuid REFERENCES user_profiles(user_id),
   status job_status DEFAULT 'open',
   date_time timestamptz NOT NULL,
   created_at timestamptz DEFAULT now(),
@@ -82,6 +83,7 @@ CREATE TABLE IF NOT EXISTS job_applications (
   job_id uuid REFERENCES jobs(id) ON DELETE CASCADE NOT NULL,
   worker_id uuid REFERENCES user_profiles(user_id) ON DELETE CASCADE NOT NULL,
   status application_status DEFAULT 'pending',
+   is_shortlisted boolean DEFAULT false,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now(),
   UNIQUE(job_id, worker_id)
@@ -94,6 +96,7 @@ CREATE TABLE IF NOT EXISTS reviews (
   reviewee_id uuid REFERENCES user_profiles(user_id) ON DELETE CASCADE NOT NULL,
   job_id uuid REFERENCES jobs(id) ON DELETE SET NULL,
   rating integer NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  CONSTRAINT no_self_review CHECK (reviewer_id <> reviewee_id),
   comment text,
   created_at timestamptz DEFAULT now()
 );
