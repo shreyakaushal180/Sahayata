@@ -13,7 +13,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase, Job, JobApplication, UserProfile } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { Star, MapPin, Calendar, DollarSign, X, Briefcase, Users, Plus } from 'lucide-react';
+import { Star, MapPin, Calendar, DollarSign, X, Briefcase, Users, Plus, Search } from 'lucide-react';
+
+const getCategoryStyles = (skills: string[] = []) => {
+  const s = skills.join(' ').toLowerCase();
+  if (s.includes('cook')) return { borderL: 'border-l-4 border-l-blue-500', bg: 'bg-blue-100', text: 'text-blue-600', icon: '🍳' };
+  if (s.includes('plumb')) return { borderL: 'border-l-4 border-l-green-500', bg: 'bg-green-100', text: 'text-green-600', icon: '🔧' };
+  if (s.includes('electr')) return { borderL: 'border-l-4 border-l-amber-500', bg: 'bg-amber-100', text: 'text-amber-600', icon: '⚡' };
+  if (s.includes('clean')) return { borderL: 'border-l-4 border-l-rose-500', bg: 'bg-rose-100', text: 'text-rose-600', icon: '✨' };
+  if (s.includes('nann') || s.includes('child')) return { borderL: 'border-l-4 border-l-purple-500', bg: 'bg-purple-100', text: 'text-purple-600', icon: '👶' };
+  if (s.includes('construct') || s.includes('build')) return { borderL: 'border-l-4 border-l-orange-500', bg: 'bg-orange-100', text: 'text-orange-600', icon: '👷' };
+  return { borderL: 'border-l-4 border-l-gray-300', bg: 'bg-gray-100', text: 'text-gray-600', icon: '💼' };
+};
 
 function EmployerDashboardContent() {
   const { profile } = useAuth();
@@ -34,6 +45,16 @@ function EmployerDashboardContent() {
     required_skills: [] as string[],
     date_time: '',
   });
+  const [activeTab, setActiveTab] = useState('jobs');
+
+  // Read tab and category from URL once on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab');
+    const categoryParam = params.get('category');
+    if (tabParam) setActiveTab(tabParam);
+    if (categoryParam) setSkillFilter(categoryParam);
+  }, []);
 
   useEffect(() => {
     if (profile) {
@@ -154,7 +175,7 @@ function EmployerDashboardContent() {
 
   const filteredWorkers = workers.filter((worker) => {
     const matchesSearch = worker.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         worker.location?.toLowerCase().includes(searchQuery.toLowerCase());
+      worker.location?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesSkill = !skillFilter || worker.skills?.some((skill) =>
       skill.toLowerCase().includes(skillFilter.toLowerCase())
     );
@@ -262,14 +283,74 @@ function EmployerDashboardContent() {
           </Dialog>
         </div>
 
-        <Tabs defaultValue="jobs" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="jobs">
-              <Briefcase className="h-4 w-4 mr-2" />
+        {/* Action Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 mt-4">
+          <Card
+            className="border-t-4 border-t-blue-500 shadow-sm hover:shadow-md transition-all cursor-pointer"
+            onClick={() => setShowJobDialog(true)}
+          >
+            <CardContent className="p-8 flex items-center space-x-6">
+              <div className="p-4 bg-blue-50 rounded-full">
+                <Briefcase className="h-8 w-8 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-serif font-bold text-gray-900">Post New Job</h3>
+                <p className="text-gray-600 mt-1">Create a new listing</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card
+            className="border-t-4 border-t-green-500 shadow-sm hover:shadow-md transition-all cursor-pointer"
+            onClick={() => setActiveTab('workers')}
+          >
+            <CardContent className="p-8 flex items-center space-x-6">
+              <div className="p-4 bg-green-50 rounded-full">
+                <Search className="h-8 w-8 text-green-600" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-serif font-bold text-gray-900">Find Workers</h3>
+                <p className="text-gray-600 mt-1">Search the directory</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Category Grid */}
+        <div className="mb-10">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4 uppercase tracking-wider">Find workers skilled in...</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
+            {[
+              { name: 'Cooking', icon: '🍳' },
+              { name: 'Cleaning', icon: '✨' },
+              { name: 'Plumbing', icon: '🔧' },
+              { name: 'Electrical', icon: '⚡' },
+              { name: 'Nanny', icon: '👶' },
+              { name: 'Construction', icon: '👷' },
+            ].map(cat => (
+              <div
+                key={cat.name}
+                onClick={() => {
+                  setSkillFilter(cat.name);
+                  setActiveTab('workers');
+                }}
+                className="bg-white border hover:border-green-500 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer shadow-sm hover:shadow-md transition-all"
+              >
+                <span className="text-3xl mb-2">{cat.icon}</span>
+                <span className="text-sm font-medium text-gray-700">{cat.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="bg-gray-100 p-2 h-auto rounded-[1.25rem] flex gap-2 w-full sm:w-fit shadow-inner border border-gray-200">
+            <TabsTrigger value="jobs" className="px-6 py-3 text-base sm:text-lg rounded-xl data-[state=active]:bg-amber-600 data-[state=active]:text-white data-[state=active]:shadow-lg hover:bg-gray-200 data-[state=active]:hover:bg-amber-600 transition-all font-semibold active:scale-95">
+              <Briefcase className="h-5 w-5 mr-2" />
               My Jobs
             </TabsTrigger>
-            <TabsTrigger value="workers">
-              <Users className="h-4 w-4 mr-2" />
+            <TabsTrigger value="workers" className="px-6 py-3 text-base sm:text-lg rounded-xl data-[state=active]:bg-amber-600 data-[state=active]:text-white data-[state=active]:shadow-lg hover:bg-gray-200 data-[state=active]:hover:bg-amber-600 transition-all font-semibold active:scale-95">
+              <Users className="h-5 w-5 mr-2" />
               Find Workers
             </TabsTrigger>
           </TabsList>
@@ -287,57 +368,65 @@ function EmployerDashboardContent() {
                   </CardContent>
                 </Card>
               ) : (
-                jobs.map((job) => (
-                  <Card key={job.id}>
-                    <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <CardTitle>{job.title}</CardTitle>
-                          <CardDescription>
-                            Posted on {new Date(job.created_at || '').toLocaleDateString()}
-                          </CardDescription>
+                jobs.map((job) => {
+                  const catStyle = getCategoryStyles(job.required_skills);
+                  return (
+                    <Card key={job.id} className={`${catStyle.borderL} shadow-sm overflow-hidden`}>
+                      <CardHeader className="pb-3">
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-start space-x-3">
+                            <div className={`mt-1 h-10 w-10 rounded-full flex items-center justify-center text-lg ${catStyle.bg}`}>
+                              {catStyle.icon}
+                            </div>
+                            <div>
+                              <CardTitle className="text-xl font-bold">{job.title}</CardTitle>
+                              <CardDescription>
+                                Posted on {new Date(job.created_at || '').toLocaleDateString()}
+                              </CardDescription>
+                            </div>
+                          </div>
+                          <Badge className={job.status === 'open' ? 'bg-green-100 text-green-800 hover:bg-green-200 border-none' : 'bg-red-100 text-red-800 hover:bg-red-200 border-none'}>
+                            {job.status === 'open' ? 'Open' : 'Closed'}
+                          </Badge>
                         </div>
-                        <Badge variant={job.status === 'open' ? 'default' : 'secondary'}>
-                          {job.status}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <p className="text-gray-700">{job.description}</p>
-                      <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-                        <div className="flex items-center">
-                          <DollarSign className="h-4 w-4 mr-1" />
-                          ₹{job.wage}
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <p className="text-gray-700">{job.description}</p>
+                        <div className="flex flex-wrap gap-4 text-sm text-gray-600 items-center">
+                          <div className="flex items-center text-teal-600 font-bold text-xl">
+                            <DollarSign className="h-5 w-5 mr-1" />
+                            ₹{job.wage}
+                          </div>
+                          <div className="flex items-center">
+                            <MapPin className="h-4 w-4 mr-1" />
+                            {job.location}
+                          </div>
+                          <div className="flex items-center">
+                            <Calendar className="h-4 w-4 mr-1" />
+                            {new Date(job.date_time).toLocaleDateString()}
+                          </div>
                         </div>
-                        <div className="flex items-center">
-                          <MapPin className="h-4 w-4 mr-1" />
-                          {job.location}
-                        </div>
-                        <div className="flex items-center">
-                          <Calendar className="h-4 w-4 mr-1" />
-                          {new Date(job.date_time).toLocaleDateString()}
-                        </div>
-                      </div>
-                      {job.required_skills && job.required_skills.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                          {job.required_skills.map((skill, index) => (
-                            <Badge key={index} variant="outline">{skill}</Badge>
-                          ))}
-                        </div>
-                      )}
-                      <Button
-                        onClick={() => {
-                          setSelectedJob(job);
-                          loadApplications(job.id);
-                        }}
-                        variant="outline"
-                        className="w-full"
-                      >
-                        View Applications
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))
+                        {job.required_skills && job.required_skills.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {job.required_skills.map((skill, index) => (
+                              <Badge key={index} variant="outline">{skill}</Badge>
+                            ))}
+                          </div>
+                        )}
+                        <Button
+                          onClick={() => {
+                            setSelectedJob(job);
+                            loadApplications(job.id);
+                          }}
+                          variant="outline"
+                          className="w-full"
+                        >
+                          View Applications
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  )
+                })
               )}
             </div>
           </TabsContent>
@@ -496,8 +585,8 @@ function EmployerDashboardContent() {
                         </div>
                         <Badge variant={
                           app.status === 'accepted' ? 'default' :
-                          app.status === 'rejected' ? 'destructive' :
-                          'secondary'
+                            app.status === 'rejected' ? 'destructive' :
+                              'secondary'
                         }>
                           Status: {app.status}
                         </Badge>

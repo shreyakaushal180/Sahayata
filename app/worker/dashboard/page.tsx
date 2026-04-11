@@ -16,6 +16,17 @@ import { Star, MapPin, Calendar, DollarSign, X, Briefcase, User } from 'lucide-r
 import Link from 'next/link';
 import { updateUserProfile } from '@/lib/auth';
 
+const getCategoryStyles = (skills: string[] = []) => {
+  const s = skills.join(' ').toLowerCase();
+  if (s.includes('cook')) return { border: 'border-l-4 border-l-blue-500', bg: 'bg-blue-100', text: 'text-blue-600', icon: '🍳' };
+  if (s.includes('plumb')) return { border: 'border-l-4 border-l-green-500', bg: 'bg-green-100', text: 'text-green-600', icon: '🔧' };
+  if (s.includes('electr')) return { border: 'border-l-4 border-l-amber-500', bg: 'bg-amber-100', text: 'text-amber-600', icon: '⚡' };
+  if (s.includes('clean')) return { border: 'border-l-4 border-l-rose-500', bg: 'bg-rose-100', text: 'text-rose-600', icon: '✨' };
+  if (s.includes('nann') || s.includes('child')) return { border: 'border-l-4 border-l-purple-500', bg: 'bg-purple-100', text: 'text-purple-600', icon: '👶' };
+  if (s.includes('construct') || s.includes('build')) return { border: 'border-l-4 border-l-orange-500', bg: 'bg-orange-100', text: 'text-orange-600', icon: '👷' };
+  return { border: 'border-l-4 border-l-gray-300', bg: 'bg-gray-100', text: 'text-gray-600', icon: '💼' };
+};
+
 function WorkerDashboardContent() {
   const { profile, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -32,10 +43,19 @@ function WorkerDashboardContent() {
     availability: profile?.availability !== false,
   });
 
+  const [activeTab, setActiveTab] = useState('recommended');
+
   useEffect(() => {
     if (profile) {
       loadRecommendedJobs();
       loadApplications();
+    }
+    
+    // Check if there's a tab specified in the URL
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab');
+    if (tabParam) {
+      setActiveTab(tabParam);
     }
   }, [profile]);
 
@@ -147,18 +167,55 @@ function WorkerDashboardContent() {
           <p className="text-gray-600">Manage your profile and find jobs</p>
         </div>
 
-        <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="profile">
-              <User className="h-4 w-4 mr-2" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <Card className="bg-[#f5f0e8] border-none shadow-sm">
+            <CardContent className="p-6">
+              <p className="text-gray-600 text-sm font-medium mb-1 uppercase tracking-wider">Applications Sent</p>
+              <p className="text-4xl font-serif font-bold text-gray-900">{applications.length}</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-[#f5f0e8] border-none shadow-sm">
+            <CardContent className="p-6">
+              <p className="text-gray-600 text-sm font-medium mb-1 uppercase tracking-wider">Accepted</p>
+              <p className="text-4xl font-serif font-bold text-gray-900">
+                {applications.filter(a => a.status === 'accepted').length}
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="bg-[#f5f0e8] border-none shadow-sm">
+            <CardContent className="p-6">
+              <p className="text-gray-600 text-sm font-medium mb-1 uppercase tracking-wider">Rating</p>
+              <div className="flex items-center space-x-2">
+                <p className="text-4xl font-serif font-bold text-gray-900">
+                  {profile?.average_rating?.toFixed(1) || '0.0'}
+                </p>
+                <Star className="h-6 w-6 text-amber-500 fill-current mb-2" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="bg-gray-100 p-2 h-auto rounded-[1.25rem] flex flex-wrap gap-2 justify-start sm:justify-center overflow-x-auto shadow-inner border border-gray-200 w-full sm:w-fit mx-auto">
+            <TabsTrigger 
+              value="profile"
+              className="px-6 py-3 text-base sm:text-lg rounded-xl data-[state=active]:bg-amber-600 data-[state=active]:text-white data-[state=active]:shadow-lg hover:bg-gray-200 data-[state=active]:hover:bg-amber-600 transition-all font-semibold active:scale-95"
+            >
+              <User className="h-5 w-5 mr-2" />
               Profile
             </TabsTrigger>
-            <TabsTrigger value="recommended">
-              <Briefcase className="h-4 w-4 mr-2" />
+            <TabsTrigger 
+              value="recommended"
+              className="px-6 py-3 text-base sm:text-lg rounded-xl data-[state=active]:bg-amber-600 data-[state=active]:text-white data-[state=active]:shadow-lg hover:bg-gray-200 data-[state=active]:hover:bg-amber-600 transition-all font-semibold active:scale-95"
+            >
+              <Briefcase className="h-5 w-5 mr-2" />
               Recommended Jobs
             </TabsTrigger>
-            <TabsTrigger value="applications">
-              <Calendar className="h-4 w-4 mr-2" />
+            <TabsTrigger 
+              value="applications"
+              className="px-6 py-3 text-base sm:text-lg rounded-xl data-[state=active]:bg-amber-600 data-[state=active]:text-white data-[state=active]:shadow-lg hover:bg-gray-200 data-[state=active]:hover:bg-amber-600 transition-all font-semibold active:scale-95"
+            >
+              <Calendar className="h-5 w-5 mr-2" />
               My Applications
             </TabsTrigger>
           </TabsList>
@@ -298,48 +355,55 @@ function WorkerDashboardContent() {
                   </CardContent>
                 </Card>
               ) : (
-                recommendedJobs.map((job: any) => (
-                  <Card key={job.id}>
-                    <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <CardTitle>{job.title}</CardTitle>
-                          <CardDescription>Posted by {job.employer?.name}</CardDescription>
+                recommendedJobs.map((job: any) => {
+                  const catStyle = getCategoryStyles(job.required_skills);
+                  return (
+                    <Card key={job.id} className={`${catStyle.border} shadow-sm overflow-hidden`}>
+                      <CardHeader className="pb-3">
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-start space-x-3">
+                            <div className={`mt-1 h-10 w-10 rounded-full flex items-center justify-center text-lg ${catStyle.bg}`}>
+                              {catStyle.icon}
+                            </div>
+                            <div>
+                              <CardTitle className="text-xl font-bold">{job.title}</CardTitle>
+                              <CardDescription>Posted by {job.employer?.name}</CardDescription>
+                            </div>
+                          </div>
+                          <Badge variant={job.status === 'open' ? 'default' : 'secondary'}>
+                            {job.status}
+                          </Badge>
                         </div>
-                        <Badge variant={job.status === 'open' ? 'default' : 'secondary'}>
-                          {job.status}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <p className="text-gray-700">{job.description}</p>
-                      <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-                        <div className="flex items-center">
-                          <DollarSign className="h-4 w-4 mr-1" />
-                          ₹{job.wage}
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <p className="text-gray-700">{job.description}</p>
+                        <div className="flex flex-wrap gap-4 text-sm text-gray-600 items-center">
+                          <div className="flex items-center text-teal-600 font-bold text-xl">
+                            ₹{job.wage}
+                          </div>
+                          <div className="flex items-center">
+                            <MapPin className="h-4 w-4 mr-1" />
+                            {job.location}
+                          </div>
+                          <div className="flex items-center">
+                            <Calendar className="h-4 w-4 mr-1" />
+                            {new Date(job.date_time).toLocaleDateString()}
+                          </div>
                         </div>
-                        <div className="flex items-center">
-                          <MapPin className="h-4 w-4 mr-1" />
-                          {job.location}
-                        </div>
-                        <div className="flex items-center">
-                          <Calendar className="h-4 w-4 mr-1" />
-                          {new Date(job.date_time).toLocaleDateString()}
-                        </div>
-                      </div>
-                      {job.required_skills && job.required_skills.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                          {job.required_skills.map((skill: string, index: number) => (
-                            <Badge key={index} variant="outline">{skill}</Badge>
-                          ))}
-                        </div>
-                      )}
-                      <Button onClick={() => applyToJob(job.id)} className="w-full">
-                        Apply Now
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))
+                        {job.required_skills && job.required_skills.length > 0 && (
+                          <div className="flex flex-wrap gap-2 pt-2">
+                            {job.required_skills.map((skill: string, index: number) => (
+                              <Badge key={index} variant="outline" className="bg-gray-50">{skill}</Badge>
+                            ))}
+                          </div>
+                        )}
+                        <Button onClick={() => applyToJob(job.id)} className="w-full bg-gray-900 hover:bg-gray-800 text-white font-medium py-5 mt-2">
+                          Apply Now
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  )
+                })
               )}
             </div>
           </TabsContent>
@@ -361,42 +425,49 @@ function WorkerDashboardContent() {
                   </CardContent>
                 </Card>
               ) : (
-                applications.map((app: any) => (
-                  <Card key={app.id}>
-                    <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <CardTitle>{app.job?.title}</CardTitle>
-                          <CardDescription>Employer: {app.job?.employer?.name}</CardDescription>
+                applications.map((app: any) => {
+                  const catStyle = getCategoryStyles(app.job?.required_skills || []);
+                  return (
+                    <Card key={app.id} className={`${catStyle.border} shadow-sm overflow-hidden`}>
+                      <CardHeader className="pb-3">
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-start space-x-3">
+                            <div className={`mt-1 h-8 w-8 rounded-full flex items-center justify-center text-sm ${catStyle.bg}`}>
+                              {catStyle.icon}
+                            </div>
+                            <div>
+                              <CardTitle className="text-xl font-bold">{app.job?.title}</CardTitle>
+                              <CardDescription>Employer: {app.job?.employer?.name}</CardDescription>
+                            </div>
+                          </div>
+                          <Badge variant={
+                            app.status === 'accepted' ? 'default' :
+                              app.status === 'rejected' ? 'destructive' :
+                                'secondary'
+                          }>
+                            {app.status}
+                          </Badge>
                         </div>
-                        <Badge variant={
-                          app.status === 'accepted' ? 'default' :
-                          app.status === 'rejected' ? 'destructive' :
-                          'secondary'
-                        }>
-                          {app.status}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      <p className="text-gray-700">{app.job?.description}</p>
-                      <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-                        <div className="flex items-center">
-                          <DollarSign className="h-4 w-4 mr-1" />
-                          ₹{app.job?.wage}
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <p className="text-gray-700">{app.job?.description}</p>
+                        <div className="flex flex-wrap gap-4 text-sm text-gray-600 items-center">
+                          <div className="flex items-center text-teal-600 font-bold text-lg">
+                            ₹{app.job?.wage}
+                          </div>
+                          <div className="flex items-center">
+                            <MapPin className="h-4 w-4 mr-1" />
+                            {app.job?.location}
+                          </div>
+                          <div className="flex items-center">
+                            <Calendar className="h-4 w-4 mr-1" />
+                            Applied on {new Date(app.created_at).toLocaleDateString()}
+                          </div>
                         </div>
-                        <div className="flex items-center">
-                          <MapPin className="h-4 w-4 mr-1" />
-                          {app.job?.location}
-                        </div>
-                        <div className="flex items-center">
-                          <Calendar className="h-4 w-4 mr-1" />
-                          Applied on {new Date(app.created_at).toLocaleDateString()}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
+                      </CardContent>
+                    </Card>
+                  )
+                })
               )}
             </div>
           </TabsContent>

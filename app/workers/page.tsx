@@ -7,7 +7,35 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { supabase, UserProfile } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { Users, MapPin, Star, Search, Briefcase } from 'lucide-react';
+import { Users, MapPin, Star, Search, Briefcase, Phone } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+
+const getInitials = (name: string) => {
+  return name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'W';
+};
+
+const getCategoryStyles = (skill: string = '') => {
+  const s = skill.toLowerCase();
+  if (s.includes('cook')) return { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-200' };
+  if (s.includes('plumb')) return { bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-200' };
+  if (s.includes('electr')) return { bg: 'bg-amber-100', text: 'text-amber-700', border: 'border-amber-200' };
+  if (s.includes('clean')) return { bg: 'bg-rose-100', text: 'text-rose-700', border: 'border-rose-200' };
+  if (s.includes('nann') || s.includes('child')) return { bg: 'bg-purple-100', text: 'text-purple-700', border: 'border-purple-200' };
+  if (s.includes('construct') || s.includes('build')) return { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-200' };
+  return { bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-200' };
+};
+
+const getCategoryAvatarStyles = (skills: string[] = []) => {
+  if (!skills || skills.length === 0) return { bg: 'bg-gray-100', text: 'text-gray-700' };
+  const s = skills[0].toLowerCase();
+  if (s.includes('cook')) return { bg: 'bg-blue-100', text: 'text-blue-700' };
+  if (s.includes('plumb')) return { bg: 'bg-green-100', text: 'text-green-700' };
+  if (s.includes('electr')) return { bg: 'bg-amber-100', text: 'text-amber-700' };
+  if (s.includes('clean')) return { bg: 'bg-rose-100', text: 'text-rose-700' };
+  if (s.includes('nann') || s.includes('child')) return { bg: 'bg-purple-100', text: 'text-purple-700' };
+  if (s.includes('construct') || s.includes('build')) return { bg: 'bg-orange-100', text: 'text-orange-700' };
+  return { bg: 'bg-gray-100', text: 'text-gray-700' };
+};
 
 export default function WorkersPage() {
   const [workers, setWorkers] = useState<UserProfile[]>([]);
@@ -17,6 +45,11 @@ export default function WorkersPage() {
   const [skillFilter, setSkillFilter] = useState('');
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const category = params.get('category');
+    if (category) {
+      setSkillFilter(category);
+    }
     loadWorkers();
   }, []);
 
@@ -106,7 +139,35 @@ export default function WorkersPage() {
           </CardContent>
         </Card>
 
-        <div className="mb-4 text-gray-600">
+        <div className="flex gap-3 overflow-x-auto pb-4 mb-4 snap-x [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
+          <Button
+            variant={skillFilter === '' ? 'default' : 'outline'}
+            onClick={() => setSkillFilter('')}
+            className={`rounded-full snap-start shrink-0 h-10 ${skillFilter === '' ? 'bg-amber-600 hover:bg-amber-700' : 'text-gray-700'}`}
+          >
+            All Workers
+          </Button>
+          {[
+            { name: 'Cooking', icon: '🍳' },
+            { name: 'Cleaning', icon: '✨' },
+            { name: 'Plumbing', icon: '🔧' },
+            { name: 'Electrical', icon: '⚡' },
+            { name: 'Nanny', icon: '👶' },
+            { name: 'Construction', icon: '👷' },
+          ].map(cat => (
+            <Button
+              key={cat.name}
+              variant={skillFilter.toLowerCase() === cat.name.toLowerCase() ? 'default' : 'outline'}
+              onClick={() => setSkillFilter(cat.name)}
+              className={`rounded-full snap-start shrink-0 flex items-center space-x-2 h-10 ${skillFilter.toLowerCase() === cat.name.toLowerCase() ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'text-gray-700'}`}
+            >
+              <span>{cat.icon}</span>
+              <span>{cat.name}</span>
+            </Button>
+          ))}
+        </div>
+
+        <div className="mb-4 text-gray-600 font-medium">
           Showing {filteredWorkers.length} {filteredWorkers.length === 1 ? 'worker' : 'workers'}
         </div>
 
@@ -122,72 +183,86 @@ export default function WorkersPage() {
               </Card>
             </div>
           ) : (
-            filteredWorkers.map((worker) => (
-              <Card key={worker.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle>{worker.name}</CardTitle>
-                      <CardDescription>
-                        {worker.experience || 0} years experience
-                      </CardDescription>
+            filteredWorkers.map((worker) => {
+              const avatarStyle = getCategoryAvatarStyles(worker.skills || []);
+              return (
+                <Card key={worker.id} className="hover:shadow-lg transition-shadow overflow-hidden border-t-0 hover:-translate-y-1 duration-300">
+                  <div className="h-2 w-full bg-gradient-to-r from-amber-500 to-amber-300"></div>
+                  <CardHeader className="pb-3">
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center space-x-4">
+                        <div className={`flex items-center justify-center h-14 w-14 rounded-full text-xl font-bold tracking-wider shrink-0 ${avatarStyle.bg} ${avatarStyle.text}`}>
+                          {getInitials(worker.name || 'User')}
+                        </div>
+                        <div>
+                          <CardTitle className="text-xl font-bold">{worker.name}</CardTitle>
+                          <CardDescription className="text-gray-600 mt-1">
+                            {worker.experience || 0} years experience
+                          </CardDescription>
+                        </div>
+                      </div>
+                      {worker.availability ? (
+                        <Badge className="bg-green-100 text-green-800 hover:bg-green-200 border-none px-3 py-1 ml-2">
+                          Available
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-200 border-none px-3 py-1 ml-2">
+                          Busy
+                        </Badge>
+                      )}
                     </div>
-                    {worker.availability && (
-                      <Badge variant="default" className="bg-green-600">
-                        Available
-                      </Badge>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
+                  </CardHeader>
+                  <CardContent className="space-y-5">
                     <div className="flex items-center">
-                      <Star className="h-5 w-5 text-yellow-400 fill-current mr-1" />
-                      <span className="font-semibold text-lg">
+                      <Star className="h-6 w-6 text-amber-500 fill-current mr-2" />
+                      <span className="font-bold text-2xl text-gray-900">
                         {worker.average_rating?.toFixed(1) || '0.0'}
                       </span>
-                      <span className="text-gray-500 text-sm ml-1">
-                        ({worker.total_ratings || 0})
+                      <span className="text-gray-500 text-sm ml-2 font-medium">
+                        ({worker.total_ratings || 0} reviews)
                       </span>
                     </div>
-                  </div>
 
-                  {worker.location && (
-                    <div className="flex items-center text-gray-600">
-                      <MapPin className="h-4 w-4 mr-2" />
-                      <span>{worker.location}</span>
+                    <div className="flex flex-col space-y-3 bg-gray-50 p-4 rounded-xl">
+                      {worker.location && (
+                        <div className="flex items-center text-gray-700 font-medium">
+                          <MapPin className="h-5 w-5 mr-3 text-blue-600" />
+                          <span>{worker.location}</span>
+                        </div>
+                      )}
+                      {worker.phone && (
+                        <div className="flex items-center text-gray-700 font-medium">
+                          <Phone className="h-5 w-5 mr-3 text-green-600" />
+                          <span>{worker.phone}</span>
+                        </div>
+                      )}
                     </div>
-                  )}
 
-                  {worker.phone && (
-                    <div className="flex items-center text-gray-600">
-                      <span className="mr-2">📞</span>
-                      <span>{worker.phone}</span>
-                    </div>
-                  )}
-
-                  {worker.skills && worker.skills.length > 0 ? (
-                    <div>
-                      <Label className="text-xs text-gray-500 mb-2">Skills:</Label>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {worker.skills.slice(0, 4).map((skill, index) => (
-                          <Badge key={index} variant="secondary">
-                            {skill}
-                          </Badge>
-                        ))}
-                        {worker.skills.length > 4 && (
-                          <Badge variant="outline">
-                            +{worker.skills.length - 4} more
-                          </Badge>
-                        )}
+                    {worker.skills && worker.skills.length > 0 ? (
+                      <div>
+                        <div className="flex flex-wrap gap-2 pt-2">
+                          {worker.skills.slice(0, 4).map((skill, index) => {
+                            const pillStyle = getCategoryStyles(skill);
+                            return (
+                              <Badge key={index} variant="outline" className={`${pillStyle.bg} ${pillStyle.text} ${pillStyle.border} px-3 py-1`}>
+                                {skill}
+                              </Badge>
+                            );
+                          })}
+                          {worker.skills.length > 4 && (
+                            <Badge variant="outline" className="bg-gray-100 text-gray-600 border-gray-200 px-3 py-1">
+                              +{worker.skills.length - 4} more
+                            </Badge>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="text-gray-400 text-sm">No skills listed</div>
-                  )}
-                </CardContent>
-              </Card>
-            ))
+                    ) : (
+                      <div className="text-gray-400 text-sm pt-2 italic">No skills listed</div>
+                    )}
+                  </CardContent>
+                </Card>
+              )
+            })
           )}
         </div>
       </div>

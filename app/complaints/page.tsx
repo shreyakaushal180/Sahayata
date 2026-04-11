@@ -192,8 +192,8 @@ export default function ComplaintsPage() {
                   complaints.map((complaint: any) => (
                     <Card key={complaint.id} className="border-l-4" style={{
                       borderLeftColor: complaint.status === 'resolved' ? '#22c55e' :
-                                      complaint.status === 'in_progress' ? '#eab308' :
-                                      '#ef4444'
+                        complaint.status === 'in_progress' ? '#eab308' :
+                          '#ef4444'
                     }}>
                       <CardHeader>
                         <div className="flex justify-between items-start">
@@ -205,8 +205,8 @@ export default function ComplaintsPage() {
                           </div>
                           <Badge variant={
                             complaint.status === 'resolved' ? 'default' :
-                            complaint.status === 'in_progress' ? 'secondary' :
-                            'destructive'
+                              complaint.status === 'in_progress' ? 'secondary' :
+                                'destructive'
                           }>
                             {complaint.status}
                           </Badge>

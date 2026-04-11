@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Menu, User, LogOut, LayoutDashboard, Briefcase } from 'lucide-react';
+import { Menu, User, LogOut, LayoutDashboard, Briefcase, Globe } from 'lucide-react';
 import { signOut } from '@/lib/auth';
 import { toast } from 'sonner';
 
@@ -51,16 +51,33 @@ export default function Navbar() {
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-2">
-              <Briefcase className="h-8 w-8 text-blue-600" />
-              <span className="text-2xl font-bold text-gray-900">Sahayata</span>
+              <Briefcase className="h-8 w-8 text-amber-600" />
+              <span className="text-2xl font-bold text-[#1a1a14] font-serif">Sahayata</span>
             </Link>
           </div>
 
           <div className="hidden md:flex items-center space-x-4">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="flex items-center space-x-2 px-3 rounded-full border-gray-300 hover:bg-gray-100">
+                  <Globe className="h-4 w-4 text-gray-700" />
+                  <span className="font-medium text-gray-700">English</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => toast.success('Language set to English')}>
+                  English (EN)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => toast.success('भाषा हिंदी में बदल गई है')}>
+                  हिंदी (HI)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             {user && profile ? (
               <>
                 <Link href="/jobs">
-                  <Button variant={pathname === '/jobs' ? 'default' : 'ghost'}>
+                  <Button variant="default" className="rounded-full bg-amber-600 hover:bg-amber-700 text-white">
                     Browse Jobs
                   </Button>
                 </Link>
@@ -114,16 +131,32 @@ export default function Navbar() {
             ) : (
               <>
                 <Link href="/login">
-                  <Button variant="ghost">Login</Button>
+                  <Button variant="outline" className="rounded-full">Login</Button>
                 </Link>
                 <Link href="/register">
-                  <Button>Register</Button>
+                  <Button className="rounded-full bg-gray-900 border border-gray-900 text-white hover:bg-gray-800">Sign Up</Button>
                 </Link>
               </>
             )}
           </div>
 
-          <div className="md:hidden">
+          <div className="md:hidden flex items-center space-x-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="h-9 w-9 rounded-full border-gray-300 hover:bg-gray-100">
+                  <Globe className="h-4 w-4 text-gray-700" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => toast.success('Language set to English')}>
+                  English
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => toast.success('भाषा हिंदी में बदल गई है')}>
+                  हिंदी
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
