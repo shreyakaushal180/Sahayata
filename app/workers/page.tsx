@@ -59,7 +59,7 @@ export default function WorkersPage() {
         .from('user_profiles')
         .select('*')
         .eq('role', 'worker')
-        .eq('availability', true)
+        .eq('availability', 'open')
         .order('average_rating', { ascending: false });
 
       if (error) throw error;
@@ -201,7 +201,7 @@ export default function WorkersPage() {
                           </CardDescription>
                         </div>
                       </div>
-                      {worker.availability ? (
+                      {worker.availability === 'open' ? (
                         <Badge className="bg-green-100 text-green-800 hover:bg-green-200 border-none px-3 py-1 ml-2">
                           Available
                         </Badge>

@@ -16,7 +16,7 @@ export interface UserProfile {
   phone?: string;
   skills?: string[];
   location?: string;
-  availability?: boolean;
+  availability?: 'open' | 'booked';
   experience?: number;
   average_rating?: number;
   total_ratings?: number;
@@ -37,12 +37,14 @@ export interface Job {
   created_at?: string;
   updated_at?: string;
   employer?: UserProfile;
+  assigned_worker?: UserProfile;
 }
 
 export interface JobApplication {
   id: string;
   job_id: string;
   worker_id: string;
+  is_shortlisted?: boolean;
   status: 'pending' | 'accepted' | 'rejected' | 'completed';
   created_at?: string;
   updated_at?: string;

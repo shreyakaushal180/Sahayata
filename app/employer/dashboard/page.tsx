@@ -46,6 +46,13 @@ function EmployerDashboardContent() {
     date_time: '',
   });
   const [activeTab, setActiveTab] = useState('jobs');
+  const [showReviewDialog, setShowReviewDialog] = useState(false);
+  const [reviewFormData, setReviewFormData] = useState({
+    rating: 5,
+    comment: '',
+    workerId: '',
+    jobId: '',
+  });
 
   // Read tab and category from URL once on mount
   useEffect(() => {
@@ -67,7 +74,7 @@ function EmployerDashboardContent() {
     try {
       const { data, error } = await supabase
         .from('jobs')
-        .select('*')
+        .select('*, assigned_worker:user_profiles!jobs_assigned_worker_id_fkey(*)')
         .eq('employer_id', profile?.user_id)
         .order('created_at', { ascending: false });
 
@@ -84,6 +91,7 @@ function EmployerDashboardContent() {
         .from('user_profiles')
         .select('*')
         .eq('role', 'worker')
+        .eq('availability', 'open')
         .order('average_rating', { ascending: false });
 
       if (error) throw error;
@@ -141,18 +149,32 @@ function EmployerDashboardContent() {
 
   const updateApplicationStatus = async (applicationId: string, status: string) => {
     try {
-      const { error } = await supabase
-        .from('job_applications')
-        .update({ status })
-        .eq('id', applicationId);
+      let error = null;
+      if (status === 'accepted') {
+        const { error: rpcError } = await supabase.rpc('book_worker', { p_job_id: selectedJob.id, p_application_id: applicationId });
+        error = rpcError;
+      } else if (status === 'completed') {
+        const { error: rpcError } = await supabase.rpc('complete_job', { p_job_id: selectedJob.id });
+        error = rpcError;
+      } else if (status === 'shortlisted') {
+        const { error: rpcError } = await supabase.rpc('shortlist_worker', { p_application_id: applicationId });
+        error = rpcError;
+      } else {
+        const { error: updateError } = await supabase
+          .from('job_applications')
+          .update({ status })
+          .eq('id', applicationId);
+        error = updateError;
+      }
 
       if (error) throw error;
       toast.success(`Application ${status}`);
       if (selectedJob) {
         loadApplications(selectedJob.id);
       }
-    } catch (error) {
-      toast.error('Failed to update application');
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || 'Failed to update application');
     }
   };
 
@@ -171,6 +193,31 @@ function EmployerDashboardContent() {
       ...jobFormData,
       required_skills: jobFormData.required_skills.filter((s) => s !== skill),
     });
+  };
+
+  const handleSubmitReview = async () => {
+    if (!profile) return;
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('reviews')
+        .insert({
+          reviewer_id: profile.user_id,
+          reviewee_id: reviewFormData.workerId,
+          job_id: reviewFormData.jobId,
+          rating: reviewFormData.rating,
+          comment: reviewFormData.comment,
+        });
+
+      if (error) throw error;
+      toast.success('Review submitted successfully');
+      setShowReviewDialog(false);
+      setReviewFormData({ rating: 5, comment: '', workerId: '', jobId: '' });
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to submit review');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const filteredWorkers = workers.filter((worker) => {
@@ -281,6 +328,41 @@ function EmployerDashboardContent() {
               </div>
             </DialogContent>
           </Dialog>
+
+          <Dialog open={showReviewDialog} onOpenChange={setShowReviewDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Leave a Review</DialogTitle>
+                <DialogDescription>Rate your experience with the worker</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Rating (1-5)</Label>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        className={`h-8 w-8 cursor-pointer ${star <= reviewFormData.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
+                        onClick={() => setReviewFormData({ ...reviewFormData, rating: star })}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Comment</Label>
+                  <Textarea
+                    value={reviewFormData.comment}
+                    onChange={(e) => setReviewFormData({ ...reviewFormData, comment: e.target.value })}
+                    placeholder="How was the worker?"
+                    rows={4}
+                  />
+                </div>
+                <Button onClick={handleSubmitReview} disabled={loading} className="w-full bg-amber-600 hover:bg-amber-700 text-white">
+                  {loading ? 'Submitting...' : 'Submit Review'}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Action Cards */}
@@ -385,13 +467,23 @@ function EmployerDashboardContent() {
                               </CardDescription>
                             </div>
                           </div>
-                          <Badge className={job.status === 'open' ? 'bg-green-100 text-green-800 hover:bg-green-200 border-none' : 'bg-red-100 text-red-800 hover:bg-red-200 border-none'}>
-                            {job.status === 'open' ? 'Open' : 'Closed'}
+                          <Badge className={
+                            job.status === 'open' ? 'bg-green-100 text-green-800 hover:bg-green-200 border-none' : 
+                            job.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border-none' : 
+                            'bg-gray-100 text-gray-800 hover:bg-gray-200 border-none'
+                          }>
+                            {job.status === 'open' ? 'Open' : job.status === 'in_progress' ? 'In Progress' : 'Completed'}
                           </Badge>
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-4">
                         <p className="text-gray-700">{job.description}</p>
+                        {job.assigned_worker && (
+                          <div className="bg-amber-50 p-3 rounded-lg border border-amber-100 mb-2">
+                            <p className="text-sm font-medium text-amber-800">Assigned Worker:</p>
+                            <p className="font-bold text-amber-900">{job.assigned_worker.name}</p>
+                          </div>
+                        )}
                         <div className="flex flex-wrap gap-4 text-sm text-gray-600 items-center">
                           <div className="flex items-center text-teal-600 font-bold text-xl">
                             <DollarSign className="h-5 w-5 mr-1" />
@@ -566,23 +658,53 @@ function EmployerDashboardContent() {
                             ))}
                           </div>
                         )}
-                        <div className="flex gap-2">
-                          <Button
-                            onClick={() => updateApplicationStatus(app.id, 'accepted')}
-                            disabled={app.status === 'accepted'}
-                            className="flex-1"
-                          >
-                            Accept
-                          </Button>
-                          <Button
-                            onClick={() => updateApplicationStatus(app.id, 'rejected')}
-                            disabled={app.status === 'rejected'}
-                            variant="destructive"
-                            className="flex-1"
-                          >
-                            Reject
-                          </Button>
-                        </div>
+                        {app.status === 'accepted' ? (
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={() => updateApplicationStatus(app.id, 'completed')}
+                              className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                            >
+                              Mark as Completed
+                            </Button>
+                          </div>
+                        ) : app.status === 'completed' ? (
+                          <div className="flex gap-2">
+                            <Button disabled className="flex-1 bg-gray-200 text-gray-700 hover:bg-gray-200">
+                              Job Completed
+                            </Button>
+                            <Button
+                              onClick={() => {
+                                setReviewFormData({
+                                  ...reviewFormData,
+                                  workerId: app.worker_id,
+                                  jobId: app.job_id,
+                                });
+                                setShowReviewDialog(true);
+                              }}
+                              className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
+                            >
+                              Leave Review
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={() => updateApplicationStatus(app.id, 'accepted')}
+                              disabled={app.status === 'accepted'}
+                              className="flex-1"
+                            >
+                              Accept
+                            </Button>
+                            <Button
+                              onClick={() => updateApplicationStatus(app.id, 'rejected')}
+                              disabled={app.status === 'rejected'}
+                              variant="destructive"
+                              className="flex-1"
+                            >
+                              Reject
+                            </Button>
+                          </div>
+                        )}
                         <Badge variant={
                           app.status === 'accepted' ? 'default' :
                             app.status === 'rejected' ? 'destructive' :

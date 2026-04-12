@@ -57,9 +57,14 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
 }
 
 export async function updateUserProfile(userId: string, updates: Partial<UserProfile>) {
+  const finalUpdates = { ...updates };
+  
+  if (finalUpdates.availability === true as any) finalUpdates.availability = 'open';
+  else if (finalUpdates.availability === false as any) finalUpdates.availability = 'booked';
+
   const { data, error } = await supabase
     .from('user_profiles')
-    .update(updates)
+    .update(finalUpdates)
     .eq('user_id', userId)
     .select()
     .single();
