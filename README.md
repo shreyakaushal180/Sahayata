@@ -206,14 +206,4 @@ sahayata/
 
 The application will be automatically deployed and available at your Vercel URL.
 
-## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This project is licensed under the MIT License.
-
-## Support
-
-For support, please open an issue in the GitHub repository or contact the development team.
